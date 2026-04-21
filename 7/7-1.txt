@@ -1,0 +1,45 @@
+1. Создал таблицы согласно приложенному скрипту "create_tables.sql"
+
+2. Распаковал приложенные файлы на компьютер
+
+3. Подключился к БД:
+psql -h localhost -p 15432 -U gpadmin -d demo
+
+4. Загрузил данные:
+
+\copy customer from 'C:\Temp\dataset\customer.tbl' WITH (FORMAT csv, DELIMITER '|');
+\copy lineitem from 'C:\Temp\dataset\lineitem.tbl' WITH (FORMAT csv, DELIMITER '|');
+\copy nation from 'C:\Temp\dataset\nation.tbl' WITH (FORMAT csv, DELIMITER '|');
+\copy orders from 'C:\Temp\dataset\orders.tbl' WITH (FORMAT csv, DELIMITER '|');
+\copy part from 'C:\Temp\dataset\part.tbl' WITH (FORMAT csv, DELIMITER '|');
+\copy partsupp from 'C:\Temp\dataset\partsupp.tbl' WITH (FORMAT csv, DELIMITER '|');
+\copy region from 'C:\Temp\dataset\region.tbl' WITH (FORMAT csv, DELIMITER '|');
+\copy supplier from 'C:\Temp\dataset\supplier.tbl' WITH (FORMAT csv, DELIMITER '|');
+
+5. В DBeaver проверил наличие данный скриптом:
+
+select 'customer' as tab_name, count(*) from customer
+union all
+select 'lineitem' as tab_name, count(*) from lineitem
+union all
+select 'nation' as tab_name, count(*) from nation
+union all
+select 'orders' as tab_name, count(*) from orders
+union all
+select 'part' as tab_name, count(*) from part
+union all
+select 'partsupp' as tab_name, count(*) from partsupp
+union all
+select 'region' as tab_name, count(*) from region
+union all
+select 'supplier' as tab_name, count(*) from supplier;
+
+Результат:
+customer	30000
+lineitem	1199969
+nation	25
+orders	300000
+part	40000
+partsupp	160000
+region	5
+supplier	2000

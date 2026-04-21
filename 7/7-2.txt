@@ -1,0 +1,52 @@
+1. Составил запрос на соединение 4-х таблиц:
+
+select c.c_name, 
+       s.s_name, 
+	   l.l_shipdate, 
+	   l.l_receiptdate,
+	   o.o_orderdate, 
+	   o.o_totalprice 
+  from lineitem l 
+  join orders o 
+    on l.l_orderkey = o.o_orderkey 
+  join customer c 
+    on o.o_custkey = c.c_custkey 
+  join supplier s 
+    on s.s_suppkey = l.l_suppkey 
+ where l.l_shipdate between date'1992-01-01' and date'1992-12-31';
+ 
+Используя команду \timing запустил запрос несколько раз, в среднем он выполнялся 2.5 сек
+ 
+2. Создал копию таблицы lineitem - lineitem_no_part без партицирования и вставил в нее данные из lineitem:
+CREATE TABLE lineitem_no_part (
+    L_ORDERKEY BIGINT,
+    L_PARTKEY INT,
+    L_SUPPKEY INT,
+    L_LINENUMBER INTEGER,
+    L_QUANTITY DECIMAL(15, 2),
+    L_EXTENDEDPRICE DECIMAL(15, 2),
+    L_DISCOUNT DECIMAL(15, 2),
+    L_TAX DECIMAL(15, 2),
+    L_RETURNFLAG CHAR(1),
+    L_LINESTATUS CHAR(1),
+    L_SHIPDATE DATE,
+    L_COMMITDATE DATE,
+    L_RECEIPTDATE DATE,
+    L_SHIPINSTRUCT CHAR(25),
+    L_SHIPMODE CHAR(10),
+    L_COMMENT VARCHAR(44)
+) WITH (
+    appendonly = true,
+    orientation = column,
+    compresstype = ZSTD
+) 
+DISTRIBUTED BY (L_ORDERKEY, L_LINENUMBER) 
+;
+
+insert into lineitem_no_part
+select *
+  from lineitem;
+ 
+Запустил запрос из п.1, изменив партицированную таблицу lineitem на непартицированную - lineitem_no_part
+В среднем он выполнялся 5.5 сек, то есть дольше, чем с партициями
+
