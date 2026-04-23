@@ -1,0 +1,292 @@
+Прикладываю запросы и планы к ним:
+--Query 1: Retrieve Customer Orders with Order and Customer Details
+select o.o_orderkey
+     , o.o_orderstatus
+     , o.o_totalprice
+     , o.o_orderdate
+     , o.o_orderpriority
+     , o.o_clerk
+     , o.o_shippriority 
+     , o.o_comment
+     , c.c_custkey
+     , c.c_name 
+     , c.c_address
+     , c.c_nationkey
+     , c.c_phone
+     , c.c_acctbal
+     , c.c_mktsegment
+     , c.c_comment  
+  from orders o 
+  join customer c 
+    on o.o_custkey = c.c_custkey
+  ;
+Gather Motion 4:1  (slice2; segments: 4)  (cost=0.00..866.97 rows=1 width=293) (actual time=1203.715..2261.430 rows=300000 loops=1)
+  ->  Hash Join  (cost=0.00..866.97 rows=1 width=293) (actual time=1145.264..1268.069 rows=76456 loops=1)
+        Hash Cond: (customer.c_custkey = orders.o_custkey)
+        Extra Text: (seg1)   Hash chain length 15.4 avg, 49 max, using 4958 of 131072 buckets.
+        ->  Seq Scan on customer  (cost=0.00..431.71 rows=7500 width=159) (actual time=30.084..59.977 rows=7530 loops=1)
+        ->  Hash  (cost=431.00..431.00 rows=1 width=138) (actual time=1111.383..1111.383 rows=76456 loops=1)
+              ->  Redistribute Motion 4:4  (slice1; segments: 4)  (cost=0.00..431.00 rows=1 width=138) (actual time=0.030..1049.866 rows=76456 loops=1)
+                    Hash Key: orders.o_custkey
+                    ->  Sequence  (cost=0.00..431.00 rows=1 width=138) (actual time=8.420..707.253 rows=75163 loops=1)
+                          ->  Partition Selector for orders (dynamic scan id: 1)  (cost=10.00..100.00 rows=25 width=4) (never executed)
+                                Partitions selected: 87 (out of 87)
+                          ->  Dynamic Seq Scan on orders (dynamic scan id: 1)  (cost=0.00..431.00 rows=1 width=138) (actual time=8.338..698.749 rows=75163 loops=1)
+                                Partitions scanned:  Avg 87.0 (out of 87) x 4 workers.  Max 87 parts (seg0).
+Planning time: 34.020 ms
+  (slice0)    Executor memory: 1074K bytes.
+  (slice1)    Executor memory: 90324K bytes avg x 4 workers, 90339K bytes max (seg2).
+  (slice2)    Executor memory: 26570K bytes avg x 4 workers, 26570K bytes max (seg0).  Work_mem: 11182K bytes max.
+Memory used:  128000kB
+Optimizer: Pivotal Optimizer (GPORCA)
+Execution time: 2316.609 ms
+
+--Query 2: Retrieve Detailed Order Information with Line Items
+select o.o_orderkey 
+     , o.o_orderkey
+     , o.o_custkey
+     , o.o_orderstatus
+     , o.o_totalprice
+     , o.o_orderdate
+     , o.o_orderpriority
+     , o.o_clerk
+     , o.o_shippriority
+     , o.o_comment
+     , l.l_partkey
+     , l.l_linenumber
+     , l.l_quantity
+     , l.l_extendedprice
+     , l.l_discount 
+     , l.l_tax
+     , l.l_returnflag
+     , l.l_linestatus
+     , l.l_shipdate date
+     , l.l_commitdate date
+     , l.l_receiptdate date
+     , l.l_shipinstruct
+     , l.l_shipmode
+     , l.l_comment
+  from lineitem l 
+  join orders o
+    on l.l_orderkey = o.o_orderkey
+    ;
+Gather Motion 4:1  (slice2; segments: 4)  (cost=0.00..862.01 rows=1 width=271) (actual time=300.638..5326.582 rows=1199969 loops=1)
+  ->  Hash Join  (cost=0.00..862.00 rows=1 width=271) (actual time=344.266..2150.141 rows=301217 loops=1)
+        Hash Cond: (lineitem.l_orderkey = orders.o_orderkey)
+        Extra Text: (seg2)   Hash chain length 1.3 avg, 6 max, using 57179 of 131072 buckets.
+        ->  Redistribute Motion 4:4  (slice1; segments: 4)  (cost=0.00..431.00 rows=1 width=141) (actual time=0.036..1251.281 rows=301217 loops=1)
+              Hash Key: lineitem.l_orderkey
+              ->  Sequence  (cost=0.00..431.00 rows=1 width=141) (actual time=15.625..1411.060 rows=300895 loops=1)
+                    ->  Partition Selector for lineitem (dynamic scan id: 1)  (cost=10.00..100.00 rows=25 width=4) (never executed)
+                          Partitions selected: 87 (out of 87)
+                    ->  Dynamic Seq Scan on lineitem (dynamic scan id: 1)  (cost=0.00..431.00 rows=1 width=141) (actual time=15.594..1372.165 rows=300895 loops=1)
+                          Partitions scanned:  Avg 87.0 (out of 87) x 4 workers.  Max 87 parts (seg0).
+        ->  Hash  (cost=431.00..431.00 rows=1 width=138) (actual time=339.091..339.091 rows=75163 loops=1)
+              ->  Sequence  (cost=0.00..431.00 rows=1 width=138) (actual time=24.391..268.087 rows=75163 loops=1)
+                    ->  Partition Selector for orders (dynamic scan id: 2)  (cost=10.00..100.00 rows=25 width=4) (never executed)
+                          Partitions selected: 87 (out of 87)
+                    ->  Dynamic Seq Scan on orders (dynamic scan id: 2)  (cost=0.00..431.00 rows=1 width=138) (actual time=24.359..261.803 rows=75163 loops=1)
+                          Partitions scanned:  Avg 87.0 (out of 87) x 4 workers.  Max 87 parts (seg0).
+Planning time: 18.762 ms
+  (slice0)    Executor memory: 313K bytes.
+  (slice1)    Executor memory: 157824K bytes avg x 4 workers, 157865K bytes max (seg3).
+  (slice2)    Executor memory: 115940K bytes avg x 4 workers, 115955K bytes max (seg2).  Work_mem: 11006K bytes max.
+Memory used:  128000kB
+Optimizer: Pivotal Optimizer (GPORCA)
+Execution time: 5426.003 ms
+
+--Query 3: Retrieve Supplier and Part Information for Each Supplier-Part Relationship
+select s.s_name
+     , s.s_address
+     , s.s_comment
+     , p.p_name
+     , p.p_mfgr
+     , p.p_brand
+     , p.p_type
+     , p.p_comment 
+     , ps.ps_comment
+  from supplier s 
+  join partsupp ps
+    on s.s_suppkey = ps.ps_suppkey
+  join part p 
+    on ps.ps_partkey = p.p_partkey
+    ;
+Gather Motion 4:1  (slice3; segments: 4)  (cost=0.00..1647.63 rows=159117 width=345) (actual time=42.439..549.543 rows=160000 loops=1)
+  ->  Hash Join  (cost=0.00..1464.00 rows=39780 width=345) (actual time=27.815..176.160 rows=40220 loops=1)
+        Hash Cond: (partsupp.ps_suppkey = supplier.s_suppkey)
+        Extra Text: (seg0)   Hash chain length 1.0 avg, 2 max, using 1973 of 65536 buckets.
+        ->  Hash Join  (cost=0.00..963.35 rows=39800 width=234) (actual time=15.312..120.959 rows=40220 loops=1)
+              Hash Cond: (partsupp.ps_partkey = part.p_partkey)
+              Extra Text: (seg0)   Hash chain length 1.1 avg, 4 max, using 9299 of 65536 buckets.
+              ->  Redistribute Motion 4:4  (slice1; segments: 4)  (cost=0.00..461.00 rows=40000 width=133) (actual time=0.019..69.699 rows=40220 loops=1)
+                    Hash Key: partsupp.ps_partkey
+                    ->  Seq Scan on partsupp  (cost=0.00..434.45 rows=40000 width=133) (actual time=0.754..22.783 rows=40196 loops=1)
+              ->  Hash  (cost=431.79..431.79 rows=10000 width=109) (actual time=15.136..15.136 rows=10055 loops=1)
+                    ->  Seq Scan on part  (cost=0.00..431.79 rows=10000 width=109) (actual time=0.618..4.073 rows=10055 loops=1)
+        ->  Hash  (cost=434.43..434.43 rows=2000 width=119) (actual time=11.897..11.897 rows=2000 loops=1)
+              ->  Broadcast Motion 4:4  (slice2; segments: 4)  (cost=0.00..434.43 rows=2000 width=119) (actual time=6.445..8.899 rows=2000 loops=1)
+                    ->  Seq Scan on supplier  (cost=0.00..431.04 rows=500 width=119) (actual time=0.471..0.591 rows=517 loops=1)
+Planning time: 73.280 ms
+  (slice0)    Executor memory: 1576K bytes.
+  (slice1)    Executor memory: 412K bytes avg x 4 workers, 412K bytes max (seg0).
+  (slice2)    Executor memory: 496K bytes avg x 4 workers, 496K bytes max (seg0).
+  (slice3)    Executor memory: 6408K bytes avg x 4 workers, 6408K bytes max (seg0).  Work_mem: 1418K bytes max.
+Memory used:  128000kB
+Optimizer: Pivotal Optimizer (GPORCA)
+Execution time: 590.818 ms
+
+--Query 4: Retrieve Comprehensive Customer Order and Line Item Details
+select l.l_orderkey
+	 , l_partkey
+	 , l_suppkey
+	 , l_linenumber
+	 , l_quantity
+	 , l_extendedprice
+	 , l_discount
+	 , l_tax
+	 , l_returnflag
+	 , l_linestatus
+	 , l_shipdate
+	 , l_commitdate
+	 , l_receiptdate
+	 , l_shipinstruct
+	 , l_shipmode
+	 , o.o_orderkey
+	 , o.o_custkey
+	 , o.o_orderstatus
+	 , o.o_totalprice
+	 , o.o_orderdate
+	 , o.o_orderpriority
+	 , o.o_clerk
+	 , o.o_shippriority
+	 , o.o_comment
+  from lineitem l 
+  join orders o 
+    on l.l_orderkey = o.o_orderkey
+    ;
+Gather Motion 4:1  (slice2; segments: 4)  (cost=0.00..862.00 rows=1 width=239) (actual time=3207.206..7691.654 rows=1199969 loops=1)
+  ->  Hash Join  (cost=0.00..862.00 rows=1 width=239) (actual time=3203.302..4704.808 rows=301217 loops=1)
+        Hash Cond: (orders.o_orderkey = lineitem.l_orderkey)
+        Extra Text: (seg2)   Hash chain length 5.3 avg, 29 max, using 57179 of 131072 buckets.
+        ->  Sequence  (cost=0.00..431.00 rows=1 width=138) (actual time=3.754..848.662 rows=75163 loops=1)
+              ->  Partition Selector for orders (dynamic scan id: 2)  (cost=10.00..100.00 rows=25 width=4) (never executed)
+                    Partitions selected: 87 (out of 87)
+              ->  Dynamic Seq Scan on orders (dynamic scan id: 2)  (cost=0.00..431.00 rows=1 width=138) (actual time=3.733..835.806 rows=75163 loops=1)
+                    Partitions scanned:  Avg 87.0 (out of 87) x 4 workers.  Max 87 parts (seg0).
+        ->  Hash  (cost=431.00..431.00 rows=1 width=101) (actual time=3199.314..3199.314 rows=301217 loops=1)
+              ->  Redistribute Motion 4:4  (slice1; segments: 4)  (cost=0.00..431.00 rows=1 width=101) (actual time=0.015..2532.900 rows=301217 loops=1)
+                    Hash Key: lineitem.l_orderkey
+                    ->  Sequence  (cost=0.00..431.00 rows=1 width=101) (actual time=3.745..1091.435 rows=300895 loops=1)
+                          ->  Partition Selector for lineitem (dynamic scan id: 1)  (cost=10.00..100.00 rows=25 width=4) (never executed)
+                                Partitions selected: 87 (out of 87)
+                          ->  Dynamic Seq Scan on lineitem (dynamic scan id: 1)  (cost=0.00..431.00 rows=1 width=101) (actual time=3.702..1055.219 rows=300895 loops=1)
+                                Partitions scanned:  Avg 87.0 (out of 87) x 4 workers.  Max 87 parts (seg0).
+Planning time: 9.544 ms
+  (slice0)    Executor memory: 346K bytes.
+  (slice1)    Executor memory: 156329K bytes avg x 4 workers, 156374K bytes max (seg3).
+  (slice2)    Executor memory: 173284K bytes avg x 4 workers, 173299K bytes max (seg2).  Work_mem: 41573K bytes max.
+Memory used:  128000kB
+Optimizer: Pivotal Optimizer (GPORCA)
+Execution time: 7776.244 ms
+	
+--Query 5: Retrieve All Parts Supplied by a Specific Supplier with Supplier Details
+select s.s_name
+     , s.s_address
+     , s.s_comment
+     , p.p_name
+     , p.p_mfgr
+     , p.p_brand
+     , p.p_type
+     , p.p_comment 
+     , ps.ps_comment
+  from supplier s 
+  join partsupp ps
+    on s.s_suppkey = ps.ps_suppkey
+  join part p 
+    on ps.ps_partkey = p.p_partkey
+ where s.s_name = 'Supplier#000001504'
+    ;
+Gather Motion 4:1  (slice3; segments: 4)  (cost=0.00..1322.09 rows=80 width=345) (actual time=48.395..52.949 rows=80 loops=1)
+  ->  Hash Join  (cost=0.00..1322.00 rows=20 width=345) (actual time=42.860..47.432 rows=23 loops=1)
+        Hash Cond: (part.p_partkey = partsupp.ps_partkey)
+        Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 23 of 32768 buckets.
+        ->  Seq Scan on part  (cost=0.00..431.79 rows=10000 width=109) (actual time=1.455..4.445 rows=10055 loops=1)
+        ->  Hash  (cost=885.64..885.64 rows=20 width=244) (actual time=41.328..41.328 rows=23 loops=1)
+              ->  Redistribute Motion 4:4  (slice2; segments: 4)  (cost=0.00..885.64 rows=20 width=244) (actual time=27.985..41.302 rows=23 loops=1)
+                    Hash Key: partsupp.ps_partkey
+                    ->  Hash Join  (cost=0.00..885.63 rows=20 width=244) (actual time=3.741..29.964 rows=30 loops=1)
+                          Hash Cond: (partsupp.ps_suppkey = supplier.s_suppkey)
+                          Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 1 of 65536 buckets.
+                          ->  Seq Scan on partsupp  (cost=0.00..434.45 rows=40000 width=133) (actual time=0.414..17.734 rows=40196 loops=1)
+                          ->  Hash  (cost=431.07..431.07 rows=1 width=119) (actual time=2.632..2.632 rows=1 loops=1)
+                                ->  Broadcast Motion 4:4  (slice1; segments: 4)  (cost=0.00..431.07 rows=1 width=119) (actual time=2.628..2.629 rows=1 loops=1)
+                                      ->  Seq Scan on supplier  (cost=0.00..431.06 rows=1 width=119) (actual time=0.372..0.397 rows=1 loops=1)
+                                            Filter: (s_name = 'Supplier#000001504'::bpchar)
+Planning time: 39.206 ms
+  (slice0)    Executor memory: 1576K bytes.
+  (slice1)    Executor memory: 496K bytes avg x 4 workers, 496K bytes max (seg0).
+  (slice2)    Executor memory: 928K bytes avg x 4 workers, 928K bytes max (seg0).  Work_mem: 1K bytes max.
+  (slice3)    Executor memory: 1040K bytes avg x 4 workers, 1048K bytes max (seg0).  Work_mem: 7K bytes max.
+Memory used:  128000kB
+Optimizer: Pivotal Optimizer (GPORCA)
+Execution time: 89.868 ms
+
+
+Создадим индекс 
+create index supp_name_idx on supplier (s_name);
+
+И повторим запрос:
+select s.s_name
+     , s.s_address
+     , s.s_comment
+     , p.p_name
+     , p.p_mfgr
+     , p.p_brand
+     , p.p_type
+     , p.p_comment 
+     , ps.ps_comment
+  from supplier s 
+  join partsupp ps
+    on s.s_suppkey = ps.ps_suppkey
+  join part p 
+    on ps.ps_partkey = p.p_partkey
+ where s.s_name = 'Supplier#000001504'
+    ;
+	
+По плану запроса видим, что индекс использовался:
+
+Gather Motion 4:1  (slice3; segments: 4)  (cost=0.00..1279.00 rows=80 width=345) (actual time=41.473..49.101 rows=80 loops=1)
+  ->  Hash Join  (cost=0.00..1278.91 rows=20 width=345) (actual time=34.227..38.427 rows=23 loops=1)
+        Hash Cond: (part.p_partkey = partsupp.ps_partkey)
+        Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 23 of 32768 buckets.
+        ->  Seq Scan on part  (cost=0.00..431.79 rows=10000 width=109) (actual time=0.476..2.632 rows=10055 loops=1)
+        ->  Hash  (cost=842.55..842.55 rows=20 width=244) (actual time=33.534..33.534 rows=23 loops=1)
+              ->  Redistribute Motion 4:4  (slice2; segments: 4)  (cost=0.00..842.55 rows=20 width=244) (actual time=27.162..33.512 rows=23 loops=1)
+                    Hash Key: partsupp.ps_partkey
+                    ->  Hash Join  (cost=0.00..842.54 rows=20 width=244) (actual time=7.711..25.300 rows=30 loops=1)
+                          Hash Cond: (partsupp.ps_suppkey = supplier.s_suppkey)
+                          Extra Text: (seg0)   Hash chain length 1.0 avg, 1 max, using 1 of 65536 buckets.
+                          ->  Seq Scan on partsupp  (cost=0.00..434.45 rows=40000 width=133) (actual time=0.864..14.497 rows=40196 loops=1)
+                          ->  Hash  (cost=387.98..387.98 rows=1 width=119) (actual time=6.323..6.323 rows=1 loops=1)
+                                ->  Broadcast Motion 4:4  (slice1; segments: 4)  (cost=0.00..387.98 rows=1 width=119) (actual time=5.928..6.318 rows=1 loops=1)
+                                      ->  Bitmap Heap Scan on supplier  (cost=0.00..387.97 rows=1 width=119) (actual time=4.372..4.423 rows=1 loops=1)
+                                            Recheck Cond: (s_name = 'Supplier#000001504'::bpchar)
+                                            ->  Bitmap Index Scan on supp_name_idx  (cost=0.00..0.00 rows=0 width=0) (actual time=2.850..2.850 rows=1 loops=1)
+                                                  Index Cond: (s_name = 'Supplier#000001504'::bpchar)
+Planning time: 134.003 ms
+  (slice0)    Executor memory: 1208K bytes.
+  (slice1)    Executor memory: 1088K bytes avg x 4 workers, 1112K bytes max (seg3).  Work_mem: 9K bytes max.
+  (slice2)    Executor memory: 928K bytes avg x 4 workers, 928K bytes max (seg0).  Work_mem: 1K bytes max.
+  (slice3)    Executor memory: 1040K bytes avg x 4 workers, 1048K bytes max (seg0).  Work_mem: 7K bytes max.
+Memory used:  128000kB
+Optimizer: Pivotal Optimizer (GPORCA)
+Execution time: 72.348 ms
+
+Однако в pg_stat_all_indexes не видно использование данного индекса. Предполагаю, что это из-за Bitmap Index Scan
+select * from pg_stat_all_indexes where schemaname = 'public';
+
+|relid |indexrelid|schemaname|relname |indexrelname |idx_scan|idx_tup_read|idx_tup_fetch|
+|------|----------|----------|--------|-------------|--------|------------|-------------|
+|18 007|19 650    |public    |supplier|supp_name_idx|0       |0           |0            |
+
+
