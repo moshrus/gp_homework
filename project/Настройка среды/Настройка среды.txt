@@ -1,0 +1,47 @@
+1. Создание сети
+docker network create gp-network
+
+2. Запуск котейнера с GreenPlum
+docker run --net gp-network --name gpdb-with-pxf -p 25432:5432 -d pro100filipp/greenplum-with-pxf
+
+3. Запуск контейнера с ubuntu (для настройки gpfdist "F:\project\data_dir" - расположение заружаемого файла)
+docker run --net gp-network --name gpfdist_server -it -p 8085:8080 -v F:\project\data_dir:/home/data_dir ubuntu:22.04
+
+В контейнере настроить gpfdist (согласно https://yandex.cloud/en/docs/managed-greenplum/operations/greenplum-db#ubuntu2204_1)
+apt update && apt install sudo -y
+sudo apt update && sudo apt install curl -y
+
+curl storage.yandexcloud.net/greenplum-jammy-packages/install.sh | sudo bash
+
+sudo apt update && \
+sudo apt install /tmp/gp-packages/*.deb
+
+echo "export GPHOME=/opt/greenplum-db-6" >> ~/.bashrc && \
+echo "source \$GPHOME/greenplum_path.sh" >> ~/.bashrc && \
+echo "export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}" >> ~/.bashrc && \
+source ~/.bashrc && \
+echo $GPHOME
+
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python2 1 && \
+sudo update-alternatives --install /usr/bin/python python /usr/bin/python3 2
+
+gpfdist -d /home/data_dir -p 8080 -l /home/data_dir.gpfdist.log
+
+4. Запуск и настройка Superset
+docker run -d  --net gp-network -p 8090:8088 --name superset_2_0_1 apache/superset:2.0.1
+
+docker exec -it superset_2_0_1 superset fab create-admin --username admin --firstname Superset --lastname Admin --email admin@admin.com --password XXX
+docker exec -it superset_2_0_1 superset db upgrade
+docker exec -it superset_2_0_1 superset load_examples
+docker exec -it superset_2_0_1 superset init
+
+5. Запуск Airflow
+Прикладываю файл docker-compose.yaml . Положить в папку и в данной папке создать папки config, dags, logs, plugins
+Затем нужно в командной строке перейти в данную папку и выполнить:
+docker-compose up -d
+
+
+После этого интерфейс Superset будет доступен по адресу: http://localhost:8090/
+Интерфейс Airflow будет доступен по адресу: http://localhost:8080/
+
+Настройки соединения в файле Connection_airflow.png и Connection_supeset.png
