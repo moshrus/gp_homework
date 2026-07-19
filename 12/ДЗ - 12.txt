@@ -1,0 +1,115 @@
+1. Уровень изоляции READ COMMITTED
+В окне 1 выполняю запрос: 
+
+SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
+
+begin 
+
+--Посмотрим значение в таблице по ключу:
+SELECT o_orderkey
+     , o_totalprice
+  FROM orders o
+WHERE o_orderkey = 1;
+--Получаем 1	181585.13
+
+Делаю update записи:
+UPDATE orders
+  SET o_totalprice = 100 
+WHERE o_orderkey = 1;
+
+--Проверим значение в таблице по ключу:
+SELECT o_orderkey
+     , o_totalprice
+  FROM orders o
+WHERE o_orderkey = 1;
+--Получаем 1	100.00
+
+Во окне 2 смотрим значение: 
+SELECT o_orderkey
+     , o_totalprice
+  FROM orders o
+WHERE o_orderkey = 1;
+--Получаем 1	181585.13
+--То есть во второй сессии мы не видим незафиксированные изменения. 
+
+--Если выполнить commit в окне 1, то увидим изменения и в окне 2
+
+Попробуем сделать update одновременно в двух сессия: 
+В окне 1 посмотрим текущее значение:
+SELECT o_orderkey
+     , o_totalprice
+  FROM orders o
+WHERE o_orderkey = 1;
+--Получаем 1	100.00
+
+Делаем update:
+UPDATE orders
+  SET o_totalprice = 200 
+WHERE o_orderkey = 1;
+
+При попытке сделать update этой же строки во втором окне, запрос не выполняется: 
+UPDATE orders
+  SET o_totalprice = 300 
+WHERE o_orderkey = 1;
+
+При этом в pg_locks видим блокировки:
+SELECT l.pid,
+       l.mode,
+       l.granted
+  FROM pg_locks l
+  LEFT 
+  JOIN pg_class c
+    ON c.oid = l.relation
+ WHERE c.relname = 'orders';
+ 
+Получаем: 
+8146	AccessShareLock	true
+8146	ExclusiveLock	true
+8153	RowExclusiveLock	true
+8148	RowExclusiveLock	true
+8149	RowExclusiveLock	true
+8150	RowExclusiveLock	true
+
+
+2. Уровень изоляции READ UNCOMMITTED
+
+SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
+
+begin 
+	
+SELECT o_orderkey
+     , o_totalprice
+  FROM orders o
+WHERE o_orderkey = 1;
+-- Получаем 1	100.00
+	
+--Обновляем запись
+UPDATE orders
+  SET o_totalprice = 200 
+WHERE o_orderkey = 1;
+
+--смотим текущее значение
+SELECT o_orderkey
+     , o_totalprice
+  FROM orders o
+WHERE o_orderkey = 1;
+-- Получаем 1	200.00
+
+В окне 2 
+--смотим текущее значение
+SELECT o_orderkey
+     , o_totalprice
+  FROM orders o
+WHERE o_orderkey = 1;
+-- Получаем 1	100.00
+
+То есть READ COMMITTED и READ UNCOMMITTED работают одинаково
+
+
+
+
+
+
+
+
+
