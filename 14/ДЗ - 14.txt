@@ -1,0 +1,54 @@
+Создаем ресурсные группы tech_user_group и  business_user_group (admin_group уже существует)
+
+CREATE RESOURCE GROUP tech_user_group WITH (
+    CONCURRENCY=20
+  , CPU_RATE_LIMIT=40
+  , MEMORY_LIMIT=40
+  , MEMORY_SHARED_QUOTA=50
+  , MEMORY_SPILL_RATIO=40
+);
+
+
+CREATE RESOURCE GROUP business_user_group WITH (
+    CONCURRENCY=10
+  , CPU_RATE_LIMIT=20
+  , MEMORY_LIMIT=20
+  , MEMORY_SHARED_QUOTA=40
+  , MEMORY_SPILL_RATIO=20
+); 
+
+Проверим группы:
+select * 
+  from gp_toolkit.gp_resgroup_config
+;
+
+6437	default_group	20	30	0	80	0	vmtracker	-1
+6438	admin_group	10	10	10	80	0	vmtracker	-1
+18007	tech_user_group	20	40	40	50	40	vmtracker	-1
+18015	business_user_group	10	20	20	40	20	vmtracker	-1
+
+--Создадим пользователей:
+CREATE ROLE admin_user WITH
+    LOGIN
+    ENCRYPTED PASSWORD 'admin_pass'
+    SUPERUSER
+    RESOURCE GROUP admin_group;
+
+CREATE ROLE tech_user WITH
+    LOGIN
+    ENCRYPTED PASSWORD 'tech_user_pass'
+    RESOURCE GROUP tech_user_group;
+
+CREATE ROLE business_user WITH
+    LOGIN
+    ENCRYPTED PASSWORD 'business_user_pass'
+    RESOURCE GROUP business_user_group;
+	
+	
+Для возможности подключения добавил в файл pg_hba.conf строки
+
+host     all         admin_user         172.17.0.0/24 trust
+host     all         tech_user         172.17.0.0/24 trust
+host     all         business_user         172.17.0.0/24 trust
+
+После этого удалось подключиться под пользователями.
